@@ -24,9 +24,18 @@ import {Node} from '../operations/index';
 
 import {ExecutionContext, ExecutionContextInfo} from './execution_context';
 
+import {util, computeConv2DInfo, computePool2DInfo, Conv2DInfo} from '@tensorflow/tfjs-core';
+import {getParamValue} from '../operations/executors/utils';
+
 interface NodeWithContexts {
   contexts: ExecutionContextInfo[];
   node: Node;
+}
+
+class OperandInfo {
+  index: number;
+  dtype: string;
+  shape: number[];
 }
 
 export class GraphExecutor {
@@ -35,6 +44,8 @@ export class GraphExecutor {
   private weightIds: number[];
   private placeholders: string[];
   private outputs: string[];
+  private compiledWebMLModel: boolean = false;
+  private operandInfos: { [key: string]: OperandInfo } = {};
   get weightMap(): NamedTensorsMap {
     return this._weightMap;
   }
@@ -91,6 +102,174 @@ export class GraphExecutor {
     }
   }
 
+  private compileWebMLModel(inputs: NamedTensorsMap) {
+    if (this.compiledWebMLModel === true) {
+      return;
+    }
+    let i = 0;
+    console.log(this.graph);
+    console.log(this._weightMap);
+    console.log('compileWebMLModel');
+    const context = new ExecutionContext(this._weightMap);
+    const visited: { [key: string]: boolean } = {};
+    this.compiledOrder.reduce<NamedTensorsMap>((map, node) => {
+      console.log(node);
+      if (visited[node.name]) {
+      } else if (node.op === 'placeholder') {
+        const tensor = map[node.name][0];
+        const info = { index: i++, dtype: tensor.dtype, shape: tensor.shape };
+        this.operandInfos[node.name] = info;
+        console.log(`Add operand ${node.name} {index: ${info.index}, type: ${info.dtype}, dimensions: [${info.shape}]}`);
+        visited[node.name] = true;
+      } else if (node.op === 'const') {
+        const tensor = map[node.name][0];
+        const info = { index: i++, dtype: tensor.dtype, shape: tensor.shape };
+        this.operandInfos[node.name] = info;
+        console.log(`Add operand ${node.name} {index: ${info.index}, type: ${info.dtype}, dimensions: [${info.shape}]}`);
+        console.log(`Set operand value`);
+        console.log(tensor.buffer().values);
+        visited[node.name] = true;
+      } else if (node.op === 'conv2d' || node.op === 'depthwiseConv2d') {
+        const conv = node;
+        let biasAdd, relu;
+        let childNode = conv.children[0];
+        if (childNode.op === 'add') {
+          biasAdd = childNode;
+          console.log('Fuse biasAdd');
+          childNode = biasAdd.children[0];
+          if (childNode.op === 'clipByValue') {
+            relu = childNode;
+            console.log('Fuse relu');
+          }
+        } else {
+          console.error('TODO: support non-bias case');
+        }
+        visited[conv.name] = true;
+        if (biasAdd) visited[biasAdd.name] = true;
+        if (relu) visited[relu.name] = true;
+        const input = this.operandInfos[conv.inputNames[0]];
+        const filter = this.operandInfos[conv.inputNames[1]];
+        const bias = this.operandInfos[biasAdd.inputNames[1]];
+        const strides =
+          getParamValue('strides', node, map, context) as number[];
+        const pad = getParamValue('pad', node, map, context);
+        const dataFormat =
+          (getParamValue('dataFormat', node, map, context) as string)
+            .toUpperCase();
+        if (dataFormat != 'NHWC') {
+          console.error(`dataFormat ${dataFormat} is not supported`);
+        }
+        const dilations =
+          getParamValue('dilations', node, map, context) as number[];
+        if (!util.arraysEqual(dilations, [1, 1, 1, 1])) {
+          console.error(`dilations [${dilations}] is not supported`);
+        }
+
+        let fuseCode = 'none';
+        if (relu) {
+          const max = getParamValue('clipValueMax', relu, map, context) as number;
+          if (max === 1) {
+            fuseCode = 'relu1';
+          } else if (max === 6) {
+            fuseCode = 'relu6';
+          } else {
+            fuseCode = 'relu';
+          }
+        }
+
+        let outputName;
+        if (relu) {
+          outputName = relu.name;
+        } else {
+          outputName = biasAdd.name;
+        }
+
+        let depthwise = conv.op === 'conv2d' ? false : true;
+
+        const convInfo = computeConv2DInfo([input.shape[0], input.shape[1], input.shape[2], input.shape[3]],
+          [filter.shape[0], filter.shape[1], filter.shape[2], filter.shape[3]],
+          [strides[1], strides[2]], [dilations[0], dilations[1]], pad as 'valid' | 'same', 'floor', depthwise) as Conv2DInfo;
+        const outputInfo = { index: i++, dtype: input.dtype, shape: convInfo.outShape }
+        this.operandInfos[outputName] = outputInfo;
+        console.log(`Add operand ${outputName} {index: ${outputInfo.index}, type: ${outputInfo.dtype}, dimensions: [${outputInfo.shape}]}`);
+        console.log(`Add operation {op: ${depthwise ? 'DEPTHWISE_CONV_2D' : 'CONV_2D'} input: ${input.index}, filter: ${filter.index}, bias: ${bias.index}, strides: [${strides}], pad: ${pad}, fuseCode: ${fuseCode}, output: ${outputInfo.index}}`);
+      } else if (node.op === 'avgPool') {
+        const pool = node;
+        let relu;
+        let childNode = pool.children[0];
+        if (childNode.op === 'clipByValue') {
+          relu = childNode;
+          console.log('Fuse relu');
+        }
+        visited[pool.name] = true;
+        if (relu) visited[relu.name] = true;
+        const input = this.operandInfos[pool.inputNames[0]];
+        const strides =
+          getParamValue('strides', node, map, context) as number[];
+        const pad = getParamValue('pad', node, map, context);
+        const kernelSize =
+          getParamValue('kernelSize', node, map, context) as number[];
+
+        let fuseCode = 'none';
+        if (relu) {
+          const max = getParamValue('clipValueMax', relu, map, context) as number;
+          if (max === 1) {
+            fuseCode = 'relu1';
+          } else if (max === 6) {
+            fuseCode = 'relu6';
+          } else {
+            fuseCode = 'relu';
+          }
+        }
+
+        let outputName = pool.name;
+        if (relu) {
+          outputName = relu.name;
+        }
+
+        const convInfo = computePool2DInfo([input.shape[0], input.shape[1], input.shape[2], input.shape[3]],
+          [kernelSize[1], kernelSize[2]], [strides[1], strides[2]], pad as 'valid' | 'same') as Conv2DInfo;
+        const outputInfo = { index: i++, dtype: input.dtype, shape: convInfo.outShape }
+        this.operandInfos[outputName] = outputInfo;
+        console.log(`Add operand ${outputName} {index: ${outputInfo.index}, type: ${outputInfo.dtype}, dimensions: [${outputInfo.shape}]}`);
+        console.log(`Add operation {op: AVERAGE_POOL_2D, input: ${input.index}, strides: [${strides}], pad: ${pad}, kernelSize: [${kernelSize}] fuseCode: ${fuseCode}, output: ${outputInfo.index}}`);
+      } else if (node.op === 'squeeze') {
+        console.log(`Compile op ${node.op}`);
+        const input = this.operandInfos[node.inputNames[0]];
+        const axis = node.params['axis'].value as number[];
+        const inputShape = input.shape;
+        const outShape = inputShape.reduce((shape, value, index) => {
+          if (!(index in axis)) {
+            shape.push(value);
+          }
+          return shape;
+        }, []);
+        const outputInfo = { index: i++, dtype: input.dtype, shape: outShape }
+        this.operandInfos[node.name] = outputInfo;
+        console.log(`Add operand ${node.name} {index: ${outputInfo.index}, type: ${outputInfo.dtype}, dimensions: [${outputInfo.shape}]}`);
+        console.log(`Add operation {op: RESHAPE: input: ${input.index}, shape: [${outShape}], output: ${outputInfo.index}}`);
+        visited[node.name] = true;
+      } else if (node.op === 'softmax') {
+        console.log(`Compile op ${node.op}`);
+        const input = this.operandInfos[node.inputNames[0]];
+        const outShape = input.shape;
+        const outputInfo = { index: i++, dtype: input.dtype, shape: outShape }
+        this.operandInfos[node.name] = outputInfo;
+        console.log(`Add operand ${node.name} {index: ${outputInfo.index}, type: ${outputInfo.dtype}, dimensions: [${outputInfo.shape}]}`);
+        console.log(`Add operation {op: SOFTMAX: input: ${input.index}, shape: [${outShape}], output: ${outputInfo.index}}`);
+        visited[node.name] = true;
+      } else {
+        console.error(`Op ${node.op} is not supported`);
+      }
+      return map;
+    }, { ...this.weightMap, ...inputs });
+
+    let input = this.operandInfos[this.graph.placeholders[0].name];
+    let output = this.operandInfos[this.graph.outputs[0].name];
+    console.log(`Identify input: ${input.index}, output: ${output.index}`);
+    this.compiledWebMLModel = true;
+  }
+
   /**
    * Executes the inference for given input tensors.
    * @param inputs Tensor map for the model inputs, keyed by the input node
@@ -102,6 +281,7 @@ export class GraphExecutor {
    */
   execute(inputs: NamedTensorsMap, outputs?: string|string[]): NamedTensorMap {
     this.checkInput(inputs);
+    this.compileWebMLModel(inputs);
     const result = tidy(() => {
       const context = new ExecutionContext(this._weightMap);
       const tensors =

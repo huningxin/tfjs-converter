@@ -182,16 +182,16 @@ export class FrozenModel implements tfc.InferenceModel {
    * tensor array. The order of the tensor array is the same as the outputs
    * if provided, otherwise the order of outputNodes attribute of the model.
    */
-  execute(
+  async execute(
       inputs: tfc.Tensor|tfc.Tensor[]|tfc.NamedTensorMap,
-      outputs?: string|string[]): tfc.Tensor|tfc.Tensor[] {
-    return this.execute_(inputs, false, outputs);
+      outputs?: string|string[]): Promise<tfc.Tensor|tfc.Tensor[]> {
+    return await this.execute_(inputs, false, outputs);
   }
 
-  private execute_(
+  private async execute_(
       inputs: tfc.Tensor|tfc.Tensor[]|tfc.NamedTensorMap,
-      strictInputCheck = true, outputs?: string|string[]): tfc.Tensor
-      |tfc.Tensor[] {
+      strictInputCheck = true, outputs?: string|string[]): Promise<tfc.Tensor
+      |tfc.Tensor[]> {
     outputs = outputs || this.outputNodes;
     if (inputs instanceof tfc.Tensor || Array.isArray(inputs)) {
       inputs = this.constructTensorMap(inputs);
@@ -201,7 +201,7 @@ export class FrozenModel implements tfc.InferenceModel {
           'The model contains control flow or dynamic shape ops, ' +
           'please use executeAsync method');
     }
-    const result = this.executor.execute(
+    const result = await this.executor.execute(
         this.convertTensorMapToTensorsMap(inputs), strictInputCheck, outputs);
     const keys = Object.keys(result);
     return (Array.isArray(outputs) && outputs.length > 1) ?

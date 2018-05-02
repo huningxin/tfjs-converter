@@ -21,19 +21,22 @@ import {IMAGENET_CLASSES} from './imagenet_classes';
 
 const GOOGLE_CLOUD_STORAGE_DIR =
     'https://storage.googleapis.com/tfjs-models/savedmodel/';
-const MODEL_FILE_URL = 'mobilenet_v2_1.0_224/tensorflowjs_model.pb';
-const WEIGHT_MANIFEST_FILE_URL = 'mobilenet_v2_1.0_224/weights_manifest.json';
-const INPUT_NODE_NAME = 'images';
-const OUTPUT_NODE_NAME = 'module_apply_default/MobilenetV2/Logits/output';
-const PREPROCESS_DIVISOR = tf.scalar(255 / 2);
+const MODEL_FILE_URL = 'mobilenet_v1_1.0_224/optimized_model.pb';
+const WEIGHT_MANIFEST_FILE_URL = 'mobilenet_v1_1.0_224/weights_manifest.json';
+const INPUT_NODE_NAME = 'input';
+const OUTPUT_NODE_NAME = 'MobilenetV1/Predictions/Reshape_1';
+const SCALAR_DIVISOR = 225 / 2;
+
+const TFJS_MODEL_URL = 'web_model/tensorflowjs_model.pb';
+const WEIGHTS_MANIFEST_URL = 'web_model/weights_manifest.json';
 
 export class MobileNet {
-  constructor() {}
+  constructor() {
+    this.PREPROCESS_DIVISOR = tfc.scalar(SCALAR_DIVISOR);
+  }
 
   async load() {
-    this.model = await tf.loadFrozenModel(
-        GOOGLE_CLOUD_STORAGE_DIR + MODEL_FILE_URL,
-        GOOGLE_CLOUD_STORAGE_DIR + WEIGHT_MANIFEST_FILE_URL);
+    this.model = await tf.loadFrozenModel(TFJS_MODEL_URL, WEIGHTS_MANIFEST_URL);
   }
 
   dispose() {
@@ -49,14 +52,25 @@ export class MobileNet {
    * @param input un-preprocessed input Array.
    * @return The softmax logits.
    */
-  predict(input) {
-    const preprocessedInput = tf.div(
-        tf.sub(input.asType('float32'), PREPROCESS_DIVISOR),
-        PREPROCESS_DIVISOR);
+  async predict(input) {
+    let preprocessedInput;
+    if (tfc.getBackend() === 'webgl') {
+      preprocessedInput = tfc.div(
+          tfc.sub(input.asType('float32'), this.PREPROCESS_DIVISOR),
+          this.PREPROCESS_DIVISOR);
+    } else {
+      const values = input.buffer().values;
+      let buffer = new Float32Array(values.length);
+      for (let i = 0; i < values.length; ++i) {
+        buffer[i] = (values[i] - SCALAR_DIVISOR) / SCALAR_DIVISOR;
+      }
+      preprocessedInput = tfc.Tensor.make(input.shape, {values: buffer}, 'float32');
+    }
     const reshapedInput =
         preprocessedInput.reshape([1, ...preprocessedInput.shape]);
-    return this.model.execute(
-        {[INPUT_NODE_NAME]: reshapedInput}, OUTPUT_NODE_NAME);
+    const dict = {};
+    dict[INPUT_NODE_NAME] = reshapedInput;
+    return await this.model.execute(dict, OUTPUT_NODE_NAME);
   }
 
   getTopKClasses(logits, topK) {

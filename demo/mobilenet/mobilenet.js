@@ -28,13 +28,14 @@ const INPUT_NODE_NAME = 'input';
 const OUTPUT_NODE_NAME = 'MobilenetV1/Predictions/Reshape_1';
 const PREPROCESS_DIVISOR = tfc.scalar(255 / 2);
 
+const TFJS_MODEL_URL = './dist/web_model/tensorflowjs_model.pb';
+const WEIGHTS_MANIFEST_URL = './dist/web_model/weights_manifest.json';
+
 export class MobileNet {
   constructor() {}
 
   async load() {
-    this.model = await loadFrozenModel(
-        GOOGLE_CLOUD_STORAGE_DIR + MODEL_FILE_URL,
-        GOOGLE_CLOUD_STORAGE_DIR + WEIGHT_MANIFEST_FILE_URL);
+    this.model = await loadFrozenModel(TFJS_MODEL_URL, WEIGHTS_MANIFEST_URL);
   }
 
   dispose() {

@@ -51,13 +51,13 @@ export class MobileNet {
    * @param input un-preprocessed input Array.
    * @return The softmax logits.
    */
-  predict(input) {
+  async predict(input) {
     const preprocessedInput = tfc.div(
         tfc.sub(input.asType('float32'), PREPROCESS_DIVISOR),
         PREPROCESS_DIVISOR);
     const reshapedInput =
         preprocessedInput.reshape([1, ...preprocessedInput.shape]);
-    return this.model.execute(
+    return await this.model.execute(
         {[INPUT_NODE_NAME]:reshapedInput}, OUTPUT_NODE_NAME);
   }
 

@@ -97,7 +97,7 @@ describe('Model', () => {
     it('should generate the output', async () => {
       await model.load();
       const input = tfc.tensor1d([1], 'int32');
-      const output = model.execute({'Input': input}, 'Add');
+      const output = await model.execute({'Input': input}, 'Add');
       expect((output as tfc.Tensor).dataSync()[0]).toEqual(2);
     });
   });

@@ -51,7 +51,7 @@ export class MobileNet {
    * @param input un-preprocessed input Array.
    * @return The softmax logits.
    */
-  predict(input) {
+  async predict(input) {
     const preprocessedInput = tfc.div(
         tfc.sub(input.asType('float32'), PREPROCESS_DIVISOR),
         PREPROCESS_DIVISOR);
@@ -59,7 +59,7 @@ export class MobileNet {
         preprocessedInput.reshape([1, ...preprocessedInput.shape]);
     const dict = {};
     dict[INPUT_NODE_NAME] = reshapedInput;
-    return this.model.execute(dict, OUTPUT_NODE_NAME);
+    return await this.model.execute(dict, OUTPUT_NODE_NAME);
   }
 
   getTopKClasses(predictions, topK) {

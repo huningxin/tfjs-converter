@@ -117,14 +117,14 @@ export class FrozenModel {
    * provided and there is only one default output, otherwise return a tensor
    * map.
    */
-  execute(inputs: NamedTensorMap, outputs?: string|string[]): tfc.Tensor
-      |NamedTensorMap {
+  async execute(inputs: NamedTensorMap, outputs?: string|string[]): Promise<tfc.Tensor
+      | NamedTensorMap> {
     if (this.executor.isControlFlowModel) {
       throw new Error(
           'The model contains control flow ops, ' +
           'please use executeAsync method');
     }
-    const result = this.executor.execute(
+    const result = await this.executor.execute(
         this.convertTensorMapToTensorsMap(inputs), outputs);
     const keys = Object.keys(result);
     return (keys.length === 1) ? result[keys[0]] : result;

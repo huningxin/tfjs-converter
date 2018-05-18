@@ -15,7 +15,7 @@
  * =============================================================================
  */
 
-import { Tensor, tidy } from '@tensorflow/tfjs-core';
+import { Tensor, tidy, getBackend } from '@tensorflow/tfjs-core';
 
 import { NamedTensorMap, NamedTensorsMap } from '../data/types';
 import { getNodeNameAndIndex, getTensor } from '../operations/executors/utils';
@@ -51,7 +51,6 @@ export class GraphExecutor {
   private operandIndex: number = 0;
   private compilation: any;
   private execution: any;
-  private useWebML: boolean = true;
   get weightMap(): NamedTensorsMap {
     return this._weightMap;
   }
@@ -409,11 +408,7 @@ export class GraphExecutor {
    */
   async execute(inputs: NamedTensorsMap, outputs?: string | string[]): Promise<NamedTensorMap> {
     this.checkInput(inputs);
-    if (this.useWebML) {
-      await this.compileWebMLModel(inputs);
-      const result = await this.executeWebMLModel(inputs);
-      return result;
-    } else {
+    if (getBackend() === 'webgl') {
       const result = tidy(() => {
         const context = new ExecutionContext(this._weightMap);
         const tensors =
@@ -423,6 +418,10 @@ export class GraphExecutor {
           }, { ...this.weightMap, ...inputs });
         return this.findOutputs(tensors, context, outputs);
       });
+      return result;
+    } else {
+      await this.compileWebMLModel(inputs);
+      const result = await this.executeWebMLModel(inputs);
       return result;
     }
   }

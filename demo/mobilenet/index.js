@@ -43,12 +43,18 @@ cat.onload = async () => {
     resultElement.innerText += `${x.value.toFixed(3)}: ${x.label}\n`;
   });
 
-  for (let i = 0; i < 10; ++i) {
+  let elapsed = 0;
+  const iterations = 100;
+  for (let i = 0; i < iterations; ++i) {
     console.time(`Subsequent ${i} predictions`);
+    const start = performance.now();
     result = await mobileNet.predict(pixels);
     mobileNet.getTopKClasses(result, 5);
+    elapsed += performance.now() - start;
     console.timeEnd(`Subsequent ${i} predictions`);
   }
+
+  console.log(`Average elapsed time: ${elapsed/iterations} ms`);
 
   mobileNet.dispose();
 };

@@ -17,7 +17,6 @@
 
 import {loadFrozenModel, NamedTensorMap} from '@tensorflow/tfjs-converter';
 import * as tfc from '@tensorflow/tfjs-core';
-//tfc.setBackend('cpu');
 
 import {IMAGENET_CLASSES} from './imagenet_classes';
 
@@ -27,14 +26,15 @@ const MODEL_FILE_URL = 'mobilenet_v1_1.0_224/optimized_model.pb';
 const WEIGHT_MANIFEST_FILE_URL = 'mobilenet_v1_1.0_224/weights_manifest.json';
 const INPUT_NODE_NAME = 'input';
 const OUTPUT_NODE_NAME = 'MobilenetV1/Predictions/Reshape_1';
-const PREPROCESS_DIVISOR = tfc.scalar(255 / 2);
 const SCALAR_DIVISOR = 225 / 2;
 
 const TFJS_MODEL_URL = './dist/web_model/tensorflowjs_model.pb';
 const WEIGHTS_MANIFEST_URL = './dist/web_model/weights_manifest.json';
 
 export class MobileNet {
-  constructor() {}
+  constructor() {
+    this.PREPROCESS_DIVISOR = tfc.scalar(SCALAR_DIVISOR);
+  }
 
   async load() {
     this.model = await loadFrozenModel(TFJS_MODEL_URL, WEIGHTS_MANIFEST_URL);
@@ -57,8 +57,8 @@ export class MobileNet {
     let preprocessedInput;
     if (tfc.getBackend() === 'webgl') {
       preprocessedInput = tfc.div(
-          tfc.sub(input.asType('float32'), PREPROCESS_DIVISOR),
-          PREPROCESS_DIVISOR);
+          tfc.sub(input.asType('float32'), this.PREPROCESS_DIVISOR),
+          this.PREPROCESS_DIVISOR);
     } else {
       const values = input.buffer().values;
       let buffer = new Float32Array(values.length);

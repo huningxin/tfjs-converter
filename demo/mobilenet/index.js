@@ -21,10 +21,9 @@ import {MobileNet} from './mobilenet';
 import imageURL from './cat.jpg';
 
 const cat = document.getElementById('cat');
-cat.onload = async () => {
-  const resultElement = document.getElementById('result');
-
-  resultElement.innerText = 'Loading MobileNet...';
+const resultElement = document.getElementById('result');
+async function run() {
+  resultElement.innerText += 'Loading MobileNet...\n';
 
   const mobileNet = new MobileNet();
   console.time('Loading of model');
@@ -38,7 +37,6 @@ cat.onload = async () => {
   const topK = mobileNet.getTopKClasses(result, 5);
   console.timeEnd('First prediction');
 
-  resultElement.innerText = '';
   topK.forEach(x => {
     resultElement.innerText += `${x.value.toFixed(3)}: ${x.label}\n`;
   });
@@ -54,8 +52,28 @@ cat.onload = async () => {
     console.timeEnd(`Subsequent ${i} predictions`);
   }
 
-  console.log(`Average elapsed time: ${elapsed/iterations} ms`);
+  const averageTime = elapsed/iterations;
+  let averageText = `Average elapsed time: ${averageTime.toFixed(3)} ms\n`;
+  resultElement.innerText += averageText
+  console.log(averageText);
 
   mobileNet.dispose();
+  return averageTime;
+}
+cat.onload = async () => {
+  resultElement.innerText +='Use WebGL backend\n';
+  tfc.setBackend('webgl');
+  const webglTime = await run();
+  resultElement.innerText += '\n';
+
+  resultElement.innerText +='Use WebML backend\n';
+  // As WebML POC API only accepts CPU data, so change the
+  // backend to CPU.
+  tfc.setBackend('cpu');
+  const webmlTime = await run();
+  resultElement.innerText += '\n';
+  const speedupText = `Speedup: ${(webglTime/webmlTime).toFixed(3)}`;
+  console.log(speedupText);
+  resultElement.innerHTML += '<b>' + speedupText + '</b>';
 };
 cat.src = imageURL;

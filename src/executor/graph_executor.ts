@@ -132,8 +132,7 @@ export class GraphExecutor {
     // console.log(this._weightMap);
     // console.log('compileWebMLModel');
     // console.log(this.nn);
-    let options = {useWebGL2: false};
-    this.model = await this.nn.createModel(options);
+    this.model = await this.nn.createModel({useWebGL2: true});
     // console.log(this.model);
     const context = new ExecutionContext(this._weightMap);
     const visited: { [key: string]: boolean } = {};

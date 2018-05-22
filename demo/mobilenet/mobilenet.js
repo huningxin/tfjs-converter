@@ -28,8 +28,8 @@ const INPUT_NODE_NAME = 'input';
 const OUTPUT_NODE_NAME = 'MobilenetV1/Predictions/Reshape_1';
 const SCALAR_DIVISOR = 225 / 2;
 
-const TFJS_MODEL_URL = './dist/web_model/tensorflowjs_model.pb';
-const WEIGHTS_MANIFEST_URL = './dist/web_model/weights_manifest.json';
+const TFJS_MODEL_URL = 'web_model/tensorflowjs_model.pb';
+const WEIGHTS_MANIFEST_URL = 'web_model/weights_manifest.json';
 
 export class MobileNet {
   constructor() {

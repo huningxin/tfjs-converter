@@ -15,7 +15,7 @@
  * =============================================================================
  */
 
-import { Tensor, tidy, getBackend } from '@tensorflow/tfjs-core';
+import { Tensor, getBackend, tidy } from '@tensorflow/tfjs-core';
 
 import { NamedTensorMap, NamedTensorsMap } from '../data/types';
 import { getNodeNameAndIndex, getTensor } from '../operations/executors/utils';
@@ -132,7 +132,7 @@ export class GraphExecutor {
     // console.log(this._weightMap);
     // console.log('compileWebMLModel');
     // console.log(this.nn);
-    this.model = await this.nn.createModel({ useWebGL2: true });
+    this.model = await this.nn.createModel({ useWebGL2: false });
     // console.log(this.model);
     const context = new ExecutionContext(this._weightMap);
     const visited: { [key: string]: boolean } = {};
@@ -407,7 +407,14 @@ export class GraphExecutor {
    */
   async execute(inputs: NamedTensorsMap, outputs?: string | string[]): Promise<NamedTensorMap> {
     this.checkInput(inputs);
-    if (getBackend() === 'webgl') {
+    console.log(this.graph);
+    console.log(this.compiledOrder);
+    console.log(inputs);
+    if (getBackend() === 'cpu') {
+      await this.compileWebMLModel(inputs);
+      const result = await this.executeWebMLModel(inputs);
+      return result;
+    } else {
       const result = tidy(() => {
         const context = new ExecutionContext(this._weightMap);
         const tensors =
@@ -417,10 +424,6 @@ export class GraphExecutor {
           }, { ...this.weightMap, ...inputs });
         return this.findOutputs(tensors, context, outputs);
       });
-      return result;
-    } else {
-      await this.compileWebMLModel(inputs);
-      const result = await this.executeWebMLModel(inputs);
       return result;
     }
   }
@@ -529,7 +532,7 @@ export class GraphExecutor {
   dispose() {
     Object.keys(this.weightMap)
       .forEach(
-      key => this.weightMap[key].forEach(tensor => tensor.dispose()));
+        key => this.weightMap[key].forEach(tensor => tensor.dispose()));
   }
 
   private checkInput(inputs: NamedTensorsMap) {

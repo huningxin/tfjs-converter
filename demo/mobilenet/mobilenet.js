@@ -73,8 +73,8 @@ export class MobileNet {
         {[INPUT_NODE_NAME]:reshapedInput}, OUTPUT_NODE_NAME);
   }
 
-  getTopKClasses(predictions, topK) {
-    const values = predictions.dataSync();
+  async getTopKClasses(predictions, topK) {
+    const values = await predictions.data();
     predictions.dispose();
 
     let predictionList = [];

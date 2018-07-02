@@ -34,7 +34,7 @@ async function run() {
 
   console.time('First prediction');
   let result = await mobileNet.predict(pixels);
-  const topK = mobileNet.getTopKClasses(result, 5);
+  const topK = await mobileNet.getTopKClasses(result, 5);
   console.timeEnd('First prediction');
 
   topK.forEach(x => {
@@ -47,7 +47,7 @@ async function run() {
     console.time(`Subsequent ${i} predictions`);
     const start = performance.now();
     result = await mobileNet.predict(pixels);
-    mobileNet.getTopKClasses(result, 5);
+    await mobileNet.getTopKClasses(result, 5);
     elapsed += performance.now() - start;
     console.timeEnd(`Subsequent ${i} predictions`);
   }
@@ -69,7 +69,7 @@ cat.onload = async () => {
   resultElement.innerText +='Use WebML backend\n';
   // As WebML POC API only accepts CPU data, so change the
   // backend to CPU.
-  tfc.setBackend('cpu');
+  tfc.setBackend('webml');
   const webmlTime = await run();
   resultElement.innerText += '\n';
   const speedupText = `Speedup: ${(webglTime/webmlTime).toFixed(3)}`;

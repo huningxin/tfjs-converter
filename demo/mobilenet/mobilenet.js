@@ -55,18 +55,18 @@ export class MobileNet {
    */
   async predict(input) {
     let preprocessedInput;
-    if (tfc.getBackend() === 'webgl') {
-      preprocessedInput = tfc.div(
-          tfc.sub(input.asType('float32'), this.PREPROCESS_DIVISOR),
-          this.PREPROCESS_DIVISOR);
-    } else {
+    // if (tfc.getBackend() === 'webgl') {
+    //   preprocessedInput = tfc.div(
+    //       tfc.sub(input.asType('float32'), this.PREPROCESS_DIVISOR),
+    //       this.PREPROCESS_DIVISOR);
+    // } else {
       const values = input.buffer().values;
       let buffer = new Float32Array(values.length);
       for (let i = 0; i < values.length; ++i) {
         buffer[i] = (values[i] - SCALAR_DIVISOR) / SCALAR_DIVISOR;
       }
       preprocessedInput = tfc.Tensor.make(input.shape, {values: buffer}, 'float32');
-    }
+    // }
     const reshapedInput =
         preprocessedInput.reshape([1, ...preprocessedInput.shape]);
     return await this.model.execute(

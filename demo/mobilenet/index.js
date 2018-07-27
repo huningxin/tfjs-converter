@@ -42,7 +42,7 @@ async function run() {
   });
 
   let elapsed = 0;
-  const iterations = 100;
+  const iterations = 10;
   for (let i = 0; i < iterations; ++i) {
     console.time(`Subsequent ${i} predictions`);
     const start = performance.now();
@@ -63,17 +63,27 @@ async function run() {
 cat.onload = async () => {
   resultElement.innerText +='Use WebGL backend\n';
   tfc.setBackend('webgl');
+  tfc.setEnabledWebML(false);
   const webglTime = await run();
   resultElement.innerText += '\n';
 
-  resultElement.innerText +='Use WebML backend\n';
-  // As WebML POC API only accepts CPU data, so change the
-  // backend to CPU.
-  tfc.setBackend('webml');
-  const webmlTime = await run();
+  resultElement.innerText +='Use WebGL backend with WebML optimization\n';
+  tfc.setEnabledWebML(true);
+  const optWebglTime = await run();
   resultElement.innerText += '\n';
-  const speedupText = `Speedup: ${(webglTime/webmlTime).toFixed(3)}`;
+  resultElement.innerText += '\n';
+  let speedupText = `Speedup: ${(webglTime/optWebglTime).toFixed(3)}`;
   console.log(speedupText);
   resultElement.innerHTML += '<b>' + speedupText + '</b>';
+
+  // resultElement.innerText +='Use WebML backend\n';
+  // // As WebML POC API only accepts CPU data, so change the
+  // // backend to CPU.
+  // tfc.setBackend('webml');
+  // const webmlTime = await run();
+  // resultElement.innerText += '\n';
+  // const speedupText = `Speedup: ${(webglTime/webmlTime).toFixed(3)}`;
+  // console.log(speedupText);
+  // resultElement.innerHTML += '<b>' + speedupText + '</b>';
 };
 cat.src = imageURL;

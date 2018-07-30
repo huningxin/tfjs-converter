@@ -22,7 +22,7 @@ import imageURL from './cat.jpg';
 
 const cat = document.getElementById('cat');
 const resultElement = document.getElementById('result');
-async function run() {
+async function run(preprocess = 'webgl') {
   resultElement.innerText += 'Loading MobileNet...\n';
 
   const mobileNet = new MobileNet();
@@ -33,7 +33,7 @@ async function run() {
   const pixels = tfc.fromPixels(cat);
 
   console.time('First prediction');
-  let result = await mobileNet.predict(pixels);
+  let result = await mobileNet.predict(pixels, preprocess);
   const topK = await mobileNet.getTopKClasses(result, 5);
   console.timeEnd('First prediction');
 
@@ -42,11 +42,11 @@ async function run() {
   });
 
   let elapsed = 0;
-  const iterations = 10;
+  const iterations = 100;
   for (let i = 0; i < iterations; ++i) {
     console.time(`Subsequent ${i} predictions`);
     const start = performance.now();
-    result = await mobileNet.predict(pixels);
+    result = await mobileNet.predict(pixels, preprocess);
     await mobileNet.getTopKClasses(result, 5);
     elapsed += performance.now() - start;
     console.timeEnd(`Subsequent ${i} predictions`);
@@ -67,23 +67,21 @@ cat.onload = async () => {
   const webglTime = await run();
   resultElement.innerText += '\n';
 
-  resultElement.innerText +='Use WebGL backend with WebML optimization\n';
+  resultElement.innerText +='Use WebGL backend with WebML optimization (WebGL preprocessing)\n';
   tfc.setEnabledWebML(true);
   const optWebglTime = await run();
   resultElement.innerText += '\n';
-  resultElement.innerText += '\n';
   let speedupText = `Speedup: ${(webglTime/optWebglTime).toFixed(3)}`;
   console.log(speedupText);
-  resultElement.innerHTML += '<b>' + speedupText + '</b>';
+  resultElement.innerText += speedupText;
+  resultElement.innerText += '\n';
 
-  // resultElement.innerText +='Use WebML backend\n';
-  // // As WebML POC API only accepts CPU data, so change the
-  // // backend to CPU.
-  // tfc.setBackend('webml');
-  // const webmlTime = await run();
-  // resultElement.innerText += '\n';
-  // const speedupText = `Speedup: ${(webglTime/webmlTime).toFixed(3)}`;
-  // console.log(speedupText);
-  // resultElement.innerHTML += '<b>' + speedupText + '</b>';
+  resultElement.innerText +='\nUse WebGL backend with WebML optimization (CPU preprocessing)\n';
+  tfc.setEnabledWebML(true);
+  const optWebglTime2 = await run('cpu');
+  resultElement.innerText += '\n';
+  speedupText = `Speedup: ${(webglTime/optWebglTime2).toFixed(3)}`;
+  console.log(speedupText);
+  resultElement.innerText += speedupText;
 };
 cat.src = imageURL;

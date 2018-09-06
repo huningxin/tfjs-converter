@@ -370,7 +370,7 @@ export class GraphExecutor {
     this.model.identifyInputsAndOutputs([input.index], [output.index]);
     await this.model.finish();
     this.compilation = await this.model.createCompilation();
-    this.compilation.setPreference(this.nn.PREFER_FAST_SINGLE_ANSWER);
+    this.compilation.setPreference(this.nn.PREFER_SUSTAINED_SPEED);
     await this.compilation.finish();
     this.execution = await this.compilation.createExecution();
     this.compiledWebMLModel = true;

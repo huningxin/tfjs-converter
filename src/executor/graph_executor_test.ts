@@ -121,17 +121,17 @@ describe('GraphExecutor', () => {
 
     describe('graph level', () => {
       describe('execute', () => {
-        it('should execute the op', () => {
+        it('should execute the op', async () => {
           const inputTensor = tfc.scalar(1);
 
-          const result = executor.execute({input: [inputTensor]});
+          const result = await executor.execute({input: [inputTensor]});
           tfc.test_util.expectArraysClose(result['output'], [5.0]);
         });
 
-        it('should allow feed intermediate nodes', () => {
+        it('should allow feed intermediate nodes', async () => {
           const intermediateTensor = tfc.scalar(1);
           const result =
-              executor.execute({intermediate: [intermediateTensor]}, false);
+              await executor.execute({intermediate: [intermediateTensor]}, false);
           tfc.test_util.expectArraysClose(result['output'], [3.0]);
         });
 

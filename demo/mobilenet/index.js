@@ -15,7 +15,7 @@
  * =============================================================================
  */
 
-import * as tf from '@tensorflow/tfjs';
+import * as tfc from '@tensorflow/tfjs-core';
 import {MobileNet} from './mobilenet';
 import imageURL from './cat.jpg';
 
@@ -29,7 +29,7 @@ async function run() {
   await mobileNet.load();
   console.timeEnd('Loading of model');
 
-  const pixels = tf.fromPixels(cat);
+  const pixels = tfc.fromPixels(cat);
 
   console.time('First prediction');
   let result = await mobileNet.predict(pixels);
@@ -37,6 +37,7 @@ async function run() {
   console.timeEnd('First prediction');
 
   topK.forEach(x => {
+    console.log(x);
     resultElement.innerText += `${x.value.toFixed(3)}: ${x.label}\n`;
   });
 

@@ -164,7 +164,7 @@ export class GraphExecutor {
     return index;
   }
 
-  private async compileWebMLModel(inputTensors: NamedTensorsMap) {
+  private async compileWebMLModel(inputs: NamedTensorsMap, names: string[]) {
     if (this.compiledWebMLModel === true) {
       return;
     }
@@ -174,9 +174,14 @@ export class GraphExecutor {
     // console.log(this.nn);
     this.model = await this.nn.createModel({useWebGL2: true});
     // console.log(this.model);
-    const context = new ExecutionContext(this._weightMap);
+
+    const tensorArrayMap: TensorArrayMap = {};
+    const context = new ExecutionContext(this._weightMap, tensorArrayMap);
     const visited: { [key: string]: boolean } = {};
-    this.compiledOrder.reduce<NamedTensorsMap>((map, node) => {
+    const map = {...this.weightMap, ...inputs};
+    const compiledNodes = this.compiledMap.get(names.join(this.SEPERATOR));
+    for (let i = 0; i < compiledNodes.length; i++) {
+      const node = compiledNodes[i];
       // console.log(node);
       let opType = null;
       let inputs: any[] = []
@@ -348,7 +353,7 @@ export class GraphExecutor {
         }
 
         const convInfo = computePool2DInfo([input.shape[0], input.shape[1], input.shape[2], input.shape[3]],
-          [kernelSize[1], kernelSize[2]], [strides[1], strides[2]], pad as 'valid' | 'same') as Conv2DInfo;
+          [kernelSize[1], kernelSize[2]], [strides[1], strides[2]], 1.0, pad as 'valid' | 'same') as Conv2DInfo;
         const outputInfo = { index: this.operandIndex++, dtype: input.dtype, shape: convInfo.outShape }
         this.operandInfos[outputName] = outputInfo;
         // console.log(`Add operand ${outputName} {index: ${outputInfo.index}, type: ${outputInfo.dtype}, dimensions: [${outputInfo.shape}]}`);
@@ -401,8 +406,7 @@ export class GraphExecutor {
         this.model.addOperation(opType, inputs, outputs);
         // console.log(`addOperation(${opType}, [${inputs}], [${outputs}])`);
       }
-      return map;
-    }, { ...this.weightMap, ...inputTensors });
+    }
 
     let input = this.operandInfos[this.graph.placeholders[0].name];
     let output = this.operandInfos[this.graph.outputs[0].name];
@@ -447,10 +451,11 @@ export class GraphExecutor {
    */
   async execute(
       inputs: NamedTensorsMap, strictInputCheck = true,
-      outputs?: string|string[]): NamedTensorMap {
+      outputs?: string|string[]): Promise<NamedTensorMap> {
+    console.log('execute');
     const names = Object.keys(inputs).sort();
     this.checkInput(inputs, strictInputCheck);
-    this.checkInputShapeAndType(inputs, strictInputCheck);
+    //this.checkInputShapeAndType(inputs, strictInputCheck);
 
     this.compile(names.map(name => this.graph.nodes[name]));
     const outputNames = this.calculateOutputs(outputs);
@@ -478,7 +483,7 @@ export class GraphExecutor {
     });
     return result;
     } else {
-      await this.compileWebMLModel(inputs);
+      await this.compileWebMLModel(inputs, names);
       const result = await this.executeWebMLModel(inputs);
       return result;
     }

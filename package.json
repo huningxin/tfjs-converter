@@ -13,9 +13,6 @@
     "url": "https://github.com/tensorflow/tfjs-converter.git"
   },
   "license": "Apache-2.0",
-  "peerDependencies": {
-    "@tensorflow/tfjs-core": "~0.13.6"
-  },
   "devDependencies": {
     "@tensorflow/tfjs-core": "~0.13.6",
     "@types/jasmine": "~2.8.6",

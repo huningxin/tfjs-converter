@@ -6,11 +6,10 @@
   "license": "Apache-2.0",
   "private": true,
   "dependencies": {
-    "@tensorflow/tfjs": "0.12.5"
   },
   "scripts": {
     "mobilenet": "NODE_ENV=development parcel --no-hmr --public-url / --open mobilenet/index.html ",
-    "build.mobilenet": "NODE_ENV=production parcel build mobilenet/index.html --public-url ./ --out-dir mobilenet_dist",
+    "mobilenet_dist": "NODE_ENV=production parcel build mobilenet/index.html --public-url ./ --out-dir mobilenet_dist",
     "ssd": "NODE_ENV=development parcel --no-hmr --open ssd/index.html ",
     "control_flow": "NODE_ENV=development parcel --no-hmr --open control_flow/index.html "
   },

@@ -133,21 +133,21 @@ describe('Model', () => {
       it('should generate the output for single tensor', async () => {
         await model.load();
         const input = tfc.tensor2d([1, 1], [2, 1], 'int32');
-        const output = model.predict(input);
+        const output = await model.predict(input);
         expect((output as tfc.Tensor).dataSync()[0]).toEqual(3);
       });
 
       it('should generate the output for tensor array', async () => {
         await model.load();
         const input = tfc.tensor2d([1, 1], [2, 1], 'int32');
-        const output = model.predict([input]);
+        const output = await model.predict([input]);
         expect((output as tfc.Tensor).dataSync()[0]).toEqual(3);
       });
 
       it('should generate the output for tensor map', async () => {
         await model.load();
         const input = tfc.tensor2d([1, 1], [2, 1], 'int32');
-        const output = model.predict({'Input': input});
+        const output = await model.predict({'Input': input});
         expect((output as tfc.Tensor).dataSync()[0]).toEqual(3);
       });
 
@@ -178,13 +178,13 @@ describe('Model', () => {
       it('should generate the default output', async () => {
         await model.load();
         const input = tfc.tensor2d([1, 1], [2, 1], 'int32');
-        const output = model.execute({'Input': input});
+        const output = await model.execute({'Input': input});
         expect((output as tfc.Tensor).dataSync()[0]).toEqual(3);
       });
       it('should generate the output array', async () => {
         await model.load();
         const input = tfc.tensor2d([1, 1], [2, 1], 'int32');
-        const output = model.execute({'Input': input}, ['Add', 'Const']);
+        const output = await model.execute({'Input': input}, ['Add', 'Const']);
         expect(Array.isArray(output)).toBeTruthy();
         expect((output as tfc.Tensor[])[0].dataSync()[0]).toEqual(3);
         expect((output as tfc.Tensor[])[1].dataSync()[0]).toEqual(1);
@@ -209,7 +209,7 @@ describe('Model', () => {
       it('should allow feed intermediate node', async () => {
         await model.load();
         const input = tfc.tensor2d([1, 1], [2, 1], 'int32');
-        const output = model.execute({'Add1': input}) as tfc.Tensor;
+        const output = await model.execute({'Add1': input}) as tfc.Tensor;
         tfc.test_util.expectArraysClose(output, [2, 2]);
       });
     });

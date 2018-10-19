@@ -148,11 +148,11 @@ export class FrozenModel implements tfc.InferenceModel {
    * model has single output node, otherwise Tensor[] or NamedTensorMap[] will
    * be returned for model with multiple outputs.
    */
-  predict(
+  async predict(
       inputs: tfc.Tensor|tfc.Tensor[]|tfc.NamedTensorMap,
-      config?: tfc.ModelPredictConfig): tfc.Tensor
-      |tfc.Tensor[]|tfc.NamedTensorMap {
-    return this.execute_(inputs, true, this.outputNodes);
+      config?: tfc.ModelPredictConfig): Promise<tfc.Tensor
+      |tfc.Tensor[]|tfc.NamedTensorMap> {
+    return await this.execute_(inputs, true, this.outputNodes);
   }
 
   private constructTensorMap(inputs: tfc.Tensor|tfc.Tensor[]) {

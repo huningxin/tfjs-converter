@@ -15,7 +15,8 @@
  * =============================================================================
  */
 
-import * as tf from '@tensorflow/tfjs';
+import * as converter from '@tensorflow/tfjs-converter';
+import * as tfc from '@tensorflow/tfjs-core';
 
 import {IMAGENET_CLASSES} from './imagenet_classes';
 
@@ -36,7 +37,7 @@ export class MobileNet {
   }
 
   async load() {
-    this.model = await tf.loadFrozenModel(TFJS_MODEL_URL, WEIGHTS_MANIFEST_URL);
+    this.model = await converter.loadFrozenModel(TFJS_MODEL_URL, WEIGHTS_MANIFEST_URL);
   }
 
   dispose() {
@@ -73,11 +74,7 @@ export class MobileNet {
     return await this.model.execute(dict, OUTPUT_NODE_NAME);
   }
 
-  getTopKClasses(logits, topK) {
-    const predictions = tf.tidy(() => {
-      return tf.softmax(logits);
-    });
-
+  getTopKClasses(predictions, topK) {
     const values = predictions.dataSync();
     predictions.dispose();
 
